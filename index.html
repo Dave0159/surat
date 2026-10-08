@@ -119,9 +119,18 @@
       <input id="imgInput" type="url" inputmode="url" placeholder="https://contoh.com/lambang.png"
              class="field w-full px-3 py-2 mb-5">
 
+      <label for="titleInput" class="block text-lg mb-1">Judul surat</label>
+      <input id="titleInput" type="text" maxlength="80" value="Surat Panggilan Guild" class="field w-full px-3 py-2 mb-5">
+
+      <label for="subInput" class="block text-lg mb-1">Sub judul</label>
+      <input id="subInput" type="text" maxlength="120" value="Dari Guild Master, untuk sang petualang" class="field w-full px-3 py-2 mb-5">
+
       <label for="msgInput" class="block text-lg mb-1">Isi pesan</label>
       <textarea id="msgInput" rows="7" placeholder="Wahai petualang, Guild memanggilmu ke aula utama saat fajar..."
                 class="field w-full px-3 py-2 mb-5"></textarea>
+
+      <label for="sealInput" class="block text-lg mb-1">Teks segel</label>
+      <input id="sealInput" type="text" maxlength="80" value="Disegel atas nama Guild" class="field w-full px-3 py-2 mb-5">
 
       <div class="flex flex-col sm:flex-row gap-3">
         <button id="btnCreate" type="button" class="btn btn-primary flex-1">Buat Surat</button>
@@ -145,8 +154,8 @@
       <header class="flex flex-col items-center text-center">
         <img id="letterImg" class="portrait hidden" alt="Gambar pengirim surat" referrerpolicy="no-referrer">
         <div id="letterEmblem" class="emblem" aria-hidden="true">&#9876;</div>
-        <h2 class="font-title text-2xl sm:text-3xl mt-6" style="color:var(--wax)">Surat Panggilan Guild</h2>
-        <p class="italic mt-1 opacity-80">Dari Guild Master, untuk sang petualang</p>
+        <h2 id="letterTitle" class="font-title text-2xl sm:text-3xl mt-6" style="color:var(--wax)"></h2>
+        <p id="letterSub" class="italic mt-1 opacity-80"></p>
       </header>
 
       <hr class="divider my-6">
@@ -156,8 +165,8 @@
       <hr class="divider my-6">
 
       <footer class="flex items-center justify-end gap-3">
-        <span class="italic">Disegel atas nama Guild</span>
-        <div class="seal" aria-hidden="true">G</div>
+        <span id="letterSeal" class="italic"></span>
+        <div class="seal" aria-hidden="true">&#9884;</div>
       </footer>
     </article>
   </section>
@@ -169,25 +178,27 @@
   const $ = (id) => document.getElementById(id);
   const params = new URLSearchParams(window.location.search);
 
-  const editor = $('editor');
-  const imgInput = $('imgInput');
-  const msgInput = $('msgInput');
-  const letterImg = $('letterImg');
-  const letterEmblem = $('letterEmblem');
-  const letterMsg = $('letterMsg');
-  const status = $('status');
-
+  const DEFAULTS = {
+    title: 'Surat Panggilan Guild',
+    sub: 'Dari Guild Master, untuk sang petualang',
+    seal: 'Disegel atas nama Guild'
+  };
   const PLACEHOLDER = 'Isi pesanmu akan tampil di sini...';
 
+  const editor = $('editor');
+  const ids = ['imgInput', 'titleInput', 'subInput', 'msgInput', 'sealInput'];
+  const [imgInput, titleInput, subInput, msgInput, sealInput] = ids.map($);
+  const letterImg = $('letterImg');
+  const letterEmblem = $('letterEmblem');
+  const status = $('status');
+
   function isSafeUrl(u) {
-    try {
-      const p = new URL(u);
-      return p.protocol === 'http:' || p.protocol === 'https:';
-    } catch (e) { return false; }
+    try { const p = new URL(u); return p.protocol === 'http:' || p.protocol === 'https:'; }
+    catch (e) { return false; }
   }
 
-  function render(img, msg) {
-    const url = (img || '').trim();
+  function render(d) {
+    const url = (d.img || '').trim();
     if (url && isSafeUrl(url)) {
       letterImg.src = url;
       letterImg.classList.remove('hidden');
@@ -197,32 +208,78 @@
       letterImg.classList.add('hidden');
       letterEmblem.classList.remove('hidden');
     }
-    letterMsg.textContent = (msg && msg.length) ? msg : PLACEHOLDER;
+    $('letterTitle').textContent = d.title || '';
+    $('letterSub').textContent = d.sub || '';
+    $('letterMsg').textContent = d.msg && d.msg.length ? d.msg : PLACEHOLDER;
+    $('letterSeal').textContent = d.seal || '';
+    $('letterTitle').classList.toggle('hidden', !d.title);
+    $('letterSub').classList.toggle('hidden', !d.sub);
+    if (d.title) document.title = d.title;
   }
 
-  // Jika gambar gagal dimuat, kembali ke lambang bawaan
   letterImg.addEventListener('error', () => {
     letterImg.classList.add('hidden');
     letterEmblem.classList.remove('hidden');
   });
 
-  function buildLink() {
-    const base = window.location.origin !== 'null'
-      ? window.location.origin + window.location.pathname
-      : window.location.href.split('?')[0];
-    return base + '?img=' + encodeURIComponent(imgInput.value.trim()) +
-           '&msg=' + encodeURIComponent(msgInput.value);
+  // ===== Kode link: JSON -> kompres (deflate) -> base64url =====
+  const toB64u = (bytes) => {
+    let bin = '';
+    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  };
+  const fromB64u = (str) => {
+    const b = str.replace(/-/g, '+').replace(/_/g, '/');
+    const bin = atob(b + '='.repeat((4 - (b.length % 4)) % 4));
+    return Uint8Array.from(bin, (c) => c.charCodeAt(0));
+  };
+  async function pipe(bytes, stream) {
+    const out = new Blob([bytes]).stream().pipeThrough(stream);
+    return new Uint8Array(await new Response(out).arrayBuffer());
   }
 
-  function setStatus(text) { status.textContent = text; }
+  async function pack(d) {
+    const raw = new TextEncoder().encode(JSON.stringify([d.img, d.title, d.sub, d.msg, d.seal]));
+    if (typeof CompressionStream !== 'undefined') {
+      try { return 'z' + toB64u(await pipe(raw, new CompressionStream('deflate-raw'))); }
+      catch (e) { /* fallback di bawah */ }
+    }
+    return 'p' + toB64u(raw);
+  }
 
-  function createLetter() {
-    if (!msgInput.value.trim()) {
+  async function unpack(code) {
+    let bytes = fromB64u(code.slice(1));
+    if (code[0] === 'z') bytes = await pipe(bytes, new DecompressionStream('deflate-raw'));
+    const a = JSON.parse(new TextDecoder().decode(bytes));
+    return { img: a[0], title: a[1], sub: a[2], msg: a[3], seal: a[4] };
+  }
+
+  function readForm() {
+    return {
+      img: imgInput.value.trim(),
+      title: titleInput.value.trim(),
+      sub: subInput.value.trim(),
+      msg: msgInput.value,
+      seal: sealInput.value.trim()
+    };
+  }
+
+  function baseUrl() {
+    return window.location.origin !== 'null'
+      ? window.location.origin + window.location.pathname
+      : window.location.href.split('?')[0];
+  }
+
+  const setStatus = (t) => { status.textContent = t; };
+
+  async function createLetter() {
+    const d = readForm();
+    if (!d.msg.trim()) {
       setStatus('Isi pesan dulu sebelum membuat surat.');
       msgInput.focus();
       return null;
     }
-    const link = buildLink();
+    const link = baseUrl() + '?d=' + (await pack(d));
     $('resultUrl').value = link;
     $('resultBox').classList.remove('hidden');
     setStatus('Surat siap. Salin link di bawah atau tekan Copy Link.');
@@ -230,40 +287,53 @@
   }
 
   async function copyText(text) {
-    try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch (e) {
-      const field = $('resultUrl');
-      field.select();
+    try { await navigator.clipboard.writeText(text); return true; }
+    catch (e) {
+      $('resultUrl').select();
       try { return document.execCommand('copy'); } catch (e2) { return false; }
     }
   }
 
   // ===== Routing mode =====
-  if (params.has('img') && params.has('msg')) {
-    // MODE BACA: editor disembunyikan sepenuhnya
-    editor.remove();
-    render(params.get('img'), params.get('msg'));
-    document.title = 'Surat Panggilan dari Guild Master';
-  } else {
+  async function init() {
+    const code = params.get('d');
+    const legacy = params.has('img') && params.has('msg');
+
+    if (code || legacy) {
+      // MODE BACA
+      editor.remove();
+      try {
+        const d = code
+          ? await unpack(code)
+          : { img: params.get('img'), msg: params.get('msg') };
+        render({
+          img: d.img,
+          title: d.title != null ? d.title : DEFAULTS.title,
+          sub: d.sub != null ? d.sub : DEFAULTS.sub,
+          msg: d.msg,
+          seal: d.seal != null ? d.seal : DEFAULTS.seal
+        });
+      } catch (e) {
+        render({ title: 'Surat tidak terbaca', sub: '', msg: 'Link ini rusak atau terpotong. Minta pengirim membuat link baru.', seal: '' });
+      }
+      return;
+    }
+
     // MODE EDITOR
     editor.classList.remove('hidden');
-    render('', '');
-
-    const update = () => render(imgInput.value, msgInput.value);
-    imgInput.addEventListener('input', update);
-    msgInput.addEventListener('input', update);
+    const update = () => render(readForm());
+    ids.forEach((id) => $(id).addEventListener('input', update));
+    update();
 
     $('btnCreate').addEventListener('click', createLetter);
-
     $('btnCopy').addEventListener('click', async () => {
-      const link = createLetter();
+      const link = await createLetter();
       if (!link) return;
       const ok = await copyText(link);
       setStatus(ok ? 'Link tersalin ke clipboard.' : 'Gagal menyalin otomatis. Salin manual dari kolom link.');
     });
   }
+  init();
 })();
 </script>
 </body>
