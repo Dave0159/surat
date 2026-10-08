@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Surat Panggilan Guild Master</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --wood-dark: #2b1a10;
+    --wood: #4a2e1b;
+    --parchment: #ecdcb4;
+    --parchment-edge: #c9a96a;
+    --ink: #3a2412;
+    --wax: #8c2a1f;
+    --gold: #b88a2e;
+  }
+  body {
+    background:
+      repeating-linear-gradient(90deg, rgba(0,0,0,.18) 0 2px, transparent 2px 90px),
+      linear-gradient(180deg, var(--wood) 0%, var(--wood-dark) 100%);
+    background-attachment: fixed;
+    font-family: 'IM Fell English', Georgia, 'Times New Roman', serif;
+    color: var(--ink);
+    min-height: 100vh;
+  }
+  .font-title { font-family: 'Cinzel Decorative', 'IM Fell English', Georgia, serif; }
+
+  .scroll {
+    position: relative;
+    background:
+      radial-gradient(ellipse at 20% 10%, rgba(255,255,255,.35), transparent 55%),
+      radial-gradient(ellipse at 90% 95%, rgba(120,70,20,.25), transparent 50%),
+      var(--parchment);
+    border: 3px double var(--parchment-edge);
+    border-radius: 6px;
+    box-shadow: 0 0 0 6px rgba(0,0,0,.25), 0 18px 40px rgba(0,0,0,.55), inset 0 0 60px rgba(120,80,30,.35);
+  }
+  .portrait {
+    width: 9.5rem; height: 9.5rem;
+    border-radius: 9999px;
+    border: 5px solid var(--gold);
+    box-shadow: 0 0 0 3px var(--wood), 0 6px 16px rgba(0,0,0,.45);
+    object-fit: cover;
+    background: #d8c18c;
+  }
+  .emblem {
+    width: 9.5rem; height: 9.5rem; border-radius: 9999px;
+    border: 5px solid var(--gold);
+    box-shadow: 0 0 0 3px var(--wood), 0 6px 16px rgba(0,0,0,.45);
+    background: #d8c18c;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 3.5rem;
+  }
+  .message {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.75;
+    font-size: 1.15rem;
+    text-align: left;
+  }
+  .message::first-letter {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 2.6rem;
+    float: left;
+    line-height: .9;
+    padding: .25rem .5rem 0 0;
+    color: var(--wax);
+  }
+  .divider {
+    height: 2px; border: 0;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  }
+  .seal {
+    width: 3.2rem; height: 3.2rem; border-radius: 9999px;
+    background: radial-gradient(circle at 35% 30%, #c4402e, var(--wax) 60%, #5c150e);
+    box-shadow: 0 3px 8px rgba(0,0,0,.5);
+    color: #f1d9a0; display: flex; align-items: center; justify-content: center;
+    font-family: 'Cinzel Decorative', serif; font-size: 1.1rem;
+  }
+  .field {
+    background: rgba(255,248,225,.85);
+    border: 2px solid var(--parchment-edge);
+    border-radius: 4px;
+    color: var(--ink);
+    font-family: inherit;
+  }
+  .field:focus { outline: 3px solid var(--gold); outline-offset: 1px; }
+  .btn {
+    font-family: 'Cinzel Decorative', serif;
+    border-radius: 4px;
+    padding: .65rem 1.2rem;
+    border: 2px solid var(--gold);
+    transition: transform .1s ease, filter .15s ease;
+  }
+  .btn:hover { filter: brightness(1.12); }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: 3px solid #fff3c4; outline-offset: 2px; }
+  .btn-primary { background: var(--wax); color: #f6e3b0; }
+  .btn-secondary { background: var(--wood); color: #f6e3b0; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body class="px-4 py-8 sm:py-12">
+
+<main class="mx-auto w-full max-w-2xl">
+
+  <!-- MODE EDITOR -->
+  <section id="editor" class="hidden mb-10">
+    <h1 class="font-title text-3xl sm:text-4xl text-center mb-6" style="color:#f6e3b0; text-shadow:0 2px 6px rgba(0,0,0,.6)">
+      Penulis Surat Guild
+    </h1>
+
+    <div class="scroll p-5 sm:p-7">
+      <label for="imgInput" class="block text-lg mb-1">URL gambar (foto profil atau lambang guild)</label>
+      <input id="imgInput" type="url" inputmode="url" placeholder="https://contoh.com/lambang.png"
+             class="field w-full px-3 py-2 mb-5">
+
+      <label for="msgInput" class="block text-lg mb-1">Isi pesan</label>
+      <textarea id="msgInput" rows="7" placeholder="Wahai petualang, Guild memanggilmu ke aula utama saat fajar..."
+                class="field w-full px-3 py-2 mb-5"></textarea>
+
+      <div class="flex flex-col sm:flex-row gap-3">
+        <button id="btnCreate" type="button" class="btn btn-primary flex-1">Buat Surat</button>
+        <button id="btnCopy" type="button" class="btn btn-secondary flex-1">Copy Link</button>
+      </div>
+
+      <div id="resultBox" class="hidden mt-6">
+        <label for="resultUrl" class="block text-lg mb-1">Link surat</label>
+        <input id="resultUrl" type="text" readonly class="field w-full px-3 py-2 text-sm"
+               style="font-family: ui-monospace, Menlo, Consolas, monospace" onclick="this.select()">
+      </div>
+      <p id="status" role="status" aria-live="polite" class="mt-3 min-h-[1.5rem] italic"></p>
+    </div>
+
+    <h2 class="font-title text-xl text-center mt-10 mb-4" style="color:#f6e3b0">Pratinjau</h2>
+  </section>
+
+  <!-- LAYOUT PESAN (preview & mode baca) -->
+  <section id="letterWrap">
+    <article class="scroll px-6 py-8 sm:px-12 sm:py-12">
+      <header class="flex flex-col items-center text-center">
+        <img id="letterImg" class="portrait hidden" alt="Gambar pengirim surat" referrerpolicy="no-referrer">
+        <div id="letterEmblem" class="emblem" aria-hidden="true">&#9876;</div>
+        <h2 class="font-title text-2xl sm:text-3xl mt-6" style="color:var(--wax)">Surat Panggilan Guild</h2>
+        <p class="italic mt-1 opacity-80">Dari Guild Master, untuk sang petualang</p>
+      </header>
+
+      <hr class="divider my-6">
+
+      <div id="letterMsg" class="message"></div>
+
+      <hr class="divider my-6">
+
+      <footer class="flex items-center justify-end gap-3">
+        <span class="italic">Disegel atas nama Guild</span>
+        <div class="seal" aria-hidden="true">G</div>
+      </footer>
+    </article>
+  </section>
+
+</main>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const params = new URLSearchParams(window.location.search);
+
+  const editor = $('editor');
+  const imgInput = $('imgInput');
+  const msgInput = $('msgInput');
+  const letterImg = $('letterImg');
+  const letterEmblem = $('letterEmblem');
+  const letterMsg = $('letterMsg');
+  const status = $('status');
+
+  const PLACEHOLDER = 'Isi pesanmu akan tampil di sini...';
+
+  function isSafeUrl(u) {
+    try {
+      const p = new URL(u);
+      return p.protocol === 'http:' || p.protocol === 'https:';
+    } catch (e) { return false; }
+  }
+
+  function render(img, msg) {
+    const url = (img || '').trim();
+    if (url && isSafeUrl(url)) {
+      letterImg.src = url;
+      letterImg.classList.remove('hidden');
+      letterEmblem.classList.add('hidden');
+    } else {
+      letterImg.removeAttribute('src');
+      letterImg.classList.add('hidden');
+      letterEmblem.classList.remove('hidden');
+    }
+    letterMsg.textContent = (msg && msg.length) ? msg : PLACEHOLDER;
+  }
+
+  // Jika gambar gagal dimuat, kembali ke lambang bawaan
+  letterImg.addEventListener('error', () => {
+    letterImg.classList.add('hidden');
+    letterEmblem.classList.remove('hidden');
+  });
+
+  function buildLink() {
+    const base = window.location.origin !== 'null'
+      ? window.location.origin + window.location.pathname
+      : window.location.href.split('?')[0];
+    return base + '?img=' + encodeURIComponent(imgInput.value.trim()) +
+           '&msg=' + encodeURIComponent(msgInput.value);
+  }
+
+  function setStatus(text) { status.textContent = text; }
+
+  function createLetter() {
+    if (!msgInput.value.trim()) {
+      setStatus('Isi pesan dulu sebelum membuat surat.');
+      msgInput.focus();
+      return null;
+    }
+    const link = buildLink();
+    $('resultUrl').value = link;
+    $('resultBox').classList.remove('hidden');
+    setStatus('Surat siap. Salin link di bawah atau tekan Copy Link.');
+    return link;
+  }
+
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (e) {
+      const field = $('resultUrl');
+      field.select();
+      try { return document.execCommand('copy'); } catch (e2) { return false; }
+    }
+  }
+
+  // ===== Routing mode =====
+  if (params.has('img') && params.has('msg')) {
+    // MODE BACA: editor disembunyikan sepenuhnya
+    editor.remove();
+    render(params.get('img'), params.get('msg'));
+    document.title = 'Surat Panggilan dari Guild Master';
+  } else {
+    // MODE EDITOR
+    editor.classList.remove('hidden');
+    render('', '');
+
+    const update = () => render(imgInput.value, msgInput.value);
+    imgInput.addEventListener('input', update);
+    msgInput.addEventListener('input', update);
+
+    $('btnCreate').addEventListener('click', createLetter);
+
+    $('btnCopy').addEventListener('click', async () => {
+      const link = createLetter();
+      if (!link) return;
+      const ok = await copyText(link);
+      setStatus(ok ? 'Link tersalin ke clipboard.' : 'Gagal menyalin otomatis. Salin manual dari kolom link.');
+    });
+  }
+})();
+</script>
+</body>
+</html>
