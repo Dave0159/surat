@@ -238,20 +238,42 @@
     return new Uint8Array(await new Response(out).arrayBuffer());
   }
 
+  // Format ringkas: field dipisah baris baru, nilai bawaan dikosongkan,
+  // "https://" dibuang, lalu pilih yang terpendek antara teks polos dan terkompres.
   async function pack(d) {
-    const raw = new TextEncoder().encode(JSON.stringify([d.img, d.title, d.sub, d.msg, d.seal]));
+    const enc = (v, def) => (v === def ? '' : v === '' ? ' ' : v);
+    const img = d.img.replace(/^https:\/\//i, '');
+    const text = [img, enc(d.title, DEFAULTS.title), enc(d.sub, DEFAULTS.sub), enc(d.seal, DEFAULTS.seal)].join('\n') + '\n' + d.msg;
+    const raw = new TextEncoder().encode(text);
+    let best = 'p' + toB64u(raw);
     if (typeof CompressionStream !== 'undefined') {
-      try { return 'z' + toB64u(await pipe(raw, new CompressionStream('deflate-raw'))); }
-      catch (e) { /* fallback di bawah */ }
+      try {
+        const z = 'z' + toB64u(await pipe(raw, new CompressionStream('deflate-raw')));
+        if (z.length < best.length) best = z;
+      } catch (e) { /* pakai teks polos */ }
     }
-    return 'p' + toB64u(raw);
+    return best;
   }
 
   async function unpack(code) {
     let bytes = fromB64u(code.slice(1));
     if (code[0] === 'z') bytes = await pipe(bytes, new DecompressionStream('deflate-raw'));
-    const a = JSON.parse(new TextDecoder().decode(bytes));
-    return { img: a[0], title: a[1], sub: a[2], msg: a[3], seal: a[4] };
+    const text = new TextDecoder().decode(bytes);
+    if (text[0] === '[') { // format lama (JSON)
+      const a = JSON.parse(text);
+      return { img: a[0], title: a[1], sub: a[2], msg: a[3], seal: a[4] };
+    }
+    const p = text.split('\n');
+    const dec = (v, def) => (v === '' ? def : v === ' ' ? '' : v);
+    let img = p[0];
+    if (img && !/^https?:\/\//i.test(img)) img = 'https://' + img;
+    return {
+      img,
+      title: dec(p[1], DEFAULTS.title),
+      sub: dec(p[2], DEFAULTS.sub),
+      seal: dec(p[3], DEFAULTS.seal),
+      msg: p.slice(4).join('\n')
+    };
   }
 
   function readForm() {
@@ -279,7 +301,7 @@
       msgInput.focus();
       return null;
     }
-    const link = baseUrl() + '?d=' + (await pack(d));
+    const link = baseUrl() + '?' + (await pack(d));
     $('resultUrl').value = link;
     $('resultBox').classList.remove('hidden');
     setStatus('Surat siap. Salin link di bawah atau tekan Copy Link.');
@@ -296,7 +318,8 @@
 
   // ===== Routing mode =====
   async function init() {
-    const code = params.get('d');
+    const q = window.location.search.slice(1);
+    const code = params.get('d') || (q && !q.includes('=') ? q : null);
     const legacy = params.has('img') && params.has('msg');
 
     if (code || legacy) {
